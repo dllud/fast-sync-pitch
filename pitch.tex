@@ -1,0 +1,171 @@
+\documentclass[aspectratio=169]{beamer}
+
+\mode<presentation> {
+\usetheme{Hannover}
+  \setbeamertemplate{authors}{}
+  % Remove navigation symbols.
+  \setbeamertemplate{navigation symbols}{}
+}
+% Dark theme. Comment if there's lots of ambient light.
+\usecolortheme{owl}
+
+\usepackage{color}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage[font=tiny,skip=0pt]{caption}
+\usepackage{verbatim}
+
+\graphicspath{{img/}}
+
+% Use symbols instead of numerals for footnotes.
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+% Reset footnote counter every section.
+\makeatletter
+\@addtoreset{footnote}{subsection}
+\makeatother
+
+\title[Fast-sync in Cuprate]{Fast-sync in Cuprate}
+\subtitle{Memory-safe Monero node implementation gets closer to feature parity.}
+\author{jomuel \and dllud \thanks{\footnotesize with great support from boog900}}
+\date{}
+\logo{\includegraphics[scale=0.25]{cuprate-logo}}
+%\titlegraphic{\includegraphics[width=16em]{cuprate-wordmark}}
+
+\begin{document}
+
+\begin{frame}
+  \maketitle
+  Developed for MoneroKon's Hackathon Anti-fragility Award.
+\end{frame}
+
+\section{Cuprate}
+\begin{frame}[fragile]
+  \frametitle{Cuprate}
+  \begin{columns}
+    \begin{column}{0.8\textwidth}
+      Monero full node written from scratch in Rust.
+    \end{column}
+    \begin{column}{0.2\textwidth}
+      \includegraphics[width=\textwidth]{cuprate-logo}
+    \end{column}
+  \end{columns}
+  \vspace{2\baselineskip}
+  Brings in client diversity to Monero:
+  \begin{itemize}
+    \item independent validation of Monero consensus rules
+    \item protects network from implementation bugs in monerod\\
+      (remember block 202612)
+  \end{itemize}
+  \vspace{2\baselineskip}
+  Written in a memory-safe language: avoids (most) memory errors and related security vulnerabilities.
+\end{frame}
+
+\section{Fast-sync}
+\subsection{Overview}
+\begin{frame}[fragile]
+  \frametitle{Fast-sync Overview}
+  Block sync acceleration technique. The current default on monerod.\\
+  Skips the (expensive) RandomX PoW verification by trusting known block hashes.\\
+  Not yet implement in Cuprate.\\
+  \vspace{2\baselineskip}
+  In a VPS with: 3 vCore, 4GB RAM, 200 Mbit/s network, SSD\footnote{https://gist.github.com/DaWe35/aaa0d1a99be4a6fb0977fb7df7ddb702}
+  \begin{itemize}
+    \item "Slow" sync: 15 days.
+    \item Fast sync: 4 days.
+  \end{itemize}
+  \vspace{2\baselineskip}
+  The catch: you are trusting monerod binary on the old blocks PoW validity.
+\end{frame}
+
+\subsection{Hashes of Hashes}
+\begin{frame}[fragile]
+  \frametitle{Hashes of Hashes}
+  Storing each block hash in monerod would bloat the binary too much.\\
+  \vspace{1\baselineskip}
+  Instead monerod hashes groups of block hashes and stores that.\\
+  \vspace{1\baselineskip}
+  Current default is 512 hashes per group, which creates a binary blob with 379 KiB.\\
+\end{frame}
+
+\subsection{Loop}
+\begin{frame}[fragile]
+  \frametitle{Loop}
+  \begin{enumerate}
+    \item Peer sends block hashes.
+    \item Hashes get grouped, hashed together and checked for validity.
+    \item If valid, the full blocks are requested from peers.
+    \item Each individual block hash gets checked.
+    \item The full blocks get checked but PoW verification is skipped.
+  \end{enumerate}
+\end{frame}
+
+\section{Implementation}
+\begin{frame}[fragile]
+  \frametitle{Implementation}
+  Based on detailed instructions by boog900 (Cuprate's main dev).\\
+  \url{https://github.com/Cuprate/cuprate/issues/153}\\
+  \vspace{2\baselineskip}
+  Draft pull request at \url{https://github.com/Cuprate/cuprate/pull/155}, implements:
+  \begin{enumerate}
+    \item FastSyncService and tests.\\
+    \item A tool to generate the hashes of hashes from a synced blockchain.
+  \end{enumerate}
+\end{frame}
+
+\subsection{Hairy details}
+\begin{frame}[fragile]
+  \frametitle{Hairy details}
+  Hashes of hashes stored as a text file:
+  \lstset{
+    basicstyle=\tiny\ttfamily,
+  }
+  \begin{lstlisting}
+[
+	hex!("1adffbaf832784406018009e07d3dc3a39da7edb6632523c119ed8acb32eb934"),
+	hex!("ae960265e3398d04f3cd4f949ed13c2689424887c71c1441a03d900a9d3a777f"),
+	hex!("938c72d267bbd3a17cdecbe02443d00012ee62d6e9f3524f5a914192110b1798"),
+]
+  \end{lstlisting}
+  that gets inline included in the source:
+  \begin{lstlisting}
+static HASHES_OF_HASHES: &[HashOfHashes] = &include!("./data/hashes_of_hashes");
+  \end{lstlisting}
+  Text file 2x bigger than binary file (checkpoints.dat) in monerod's repo.\\
+  Bloat in the final Cuprate binary is the same, code is simpler.
+\end{frame}
+
+\subsection{TODO}
+\begin{frame}[fragile]
+  \frametitle{TODO}
+  \begin{itemize}
+    \item Command line option to enable/disable fast-sync.
+    \item Get it all reviewed, fix bugs, etc.
+  \end{itemize}
+\end{frame}
+
+\section{Feedback?}
+\begin{frame}
+  \frametitle{Feedback?}
+  \begin{itemize}
+    \setlength\itemsep{1em}
+    \item Questions
+    \item Comments
+    \item Ideas
+  \end{itemize}
+  \vspace{2em}
+  All welcomed!
+\end{frame}
+
+\begin{frame}
+  \frametitle{Licenses}
+  {\scriptsize
+    \begin{tabular}{l | l | l}
+      item & source & license \\
+      \hline
+      Cuprate logo & \url{https://github.com/Cuprate/cuprate/tree/main/misc/logo} & CC-BY-SA 4.0 \\
+    \end{tabular}
+  }
+\end{frame}
+
+\end{document}
