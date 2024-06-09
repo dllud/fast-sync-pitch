@@ -96,7 +96,7 @@
     \item Hashes get grouped, hashed together and checked for validity.
     \item If valid, the full blocks are requested from peers.
     \item Each individual block hash gets checked.
-    \item The full blocks get checked but PoW verification is skipped.
+    \item If it matches, block is inserted into DB with PoW hash as zeros.
   \end{enumerate}
 \end{frame}
 
