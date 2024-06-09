@@ -101,8 +101,9 @@
 \end{frame}
 
 \section{Implementation}
+\subsection{Overview}
 \begin{frame}[fragile]
-  \frametitle{Implementation}
+  \frametitle{Implementation Overview}
   Based on detailed instructions by boog900 (Cuprate's main dev).\\
   \url{https://github.com/Cuprate/cuprate/issues/153}\\
   \vspace{2\baselineskip}
@@ -140,7 +141,9 @@ static HASHES_OF_HASHES: &[HashOfHashes] = &include!("./data/hashes_of_hashes");
   \frametitle{TODO}
   \begin{itemize}
     \item Command line option to enable/disable fast-sync.
-    \item Get it all reviewed, fix bugs, etc.
+    \item Test with full mainnet chain.
+    \item Document code.
+    \item Get it reviewed and merged.
   \end{itemize}
 \end{frame}
 
